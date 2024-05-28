@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "target": "ESNext",
+        "lib": ["ES2015"],
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "outDir": "dist",
+        "esModuleInterop": true,
+        "strict": true,
+        "skipLibCheck": true,
+    },
+    "include": ["src"]
+}
