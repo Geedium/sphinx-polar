@@ -8,8 +8,9 @@ import fs from "fs";
 import path from "path";
 import unzipper from "unzipper";
 
-const DATASET_OWNER = "yamaerenay";
-const DATASET_NAME = "spotify-dataset-19212020-600k-tracks";
+import 'dotenv/config';
+const DATASET_OWNER = process.env.DATASET_OWNER;
+const DATASET_NAME = process.env.DATASET_NAME;
 const DATASET_PATH = `${DATASET_OWNER}/${DATASET_NAME}`
 
 const args = process.argv;

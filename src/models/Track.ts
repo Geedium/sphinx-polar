@@ -4,9 +4,9 @@ export interface Track {
     popularity: number; // @int
     duration: number; // @int (ms.)
     explicit: boolean; // @bool (0/1)
-    artists: string[]; // @string[]
-    id_artists: string[]; // @string[]
-    release_date: string; // @string(date yyyy-mm-dd)
+    artists: string; // @string[]
+    id_artists: string; // @string[]
+    release_date?: string; // @string(date yyyy-mm-dd)
     danceability: number; // @float
     energy: number; // @float
     key: number; // @int
@@ -21,9 +21,13 @@ export interface Track {
     time_signature: number; // @int
 }
 
-export interface TransformedTrack extends Omit<Track, 'release_date' | 'danceability'> {
+type OmitFields = 'release_date' | 'danceability' | 'id_artists' | 'artists';
+
+export interface TransformedTrack extends Omit<Track, OmitFields> {
     year: number; // @int
     month: number | null; // @int
     day: number | null; // @int
     danceability: string; // @string(Low,Medium,High) Enum
+    artists: string[];
+    id_artists: string[];
 }
