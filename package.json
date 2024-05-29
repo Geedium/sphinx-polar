@@ -8,18 +8,22 @@
   "scripts": {
     "start": "node dist/index.js",
     "bake": "node installKaggle.mjs",
-    "build": "yarn tsc"
+    "build": "yarn tsc",
+    "test": "jest"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.583.0",
     "@aws-sdk/lib-storage": "^3.583.0",
+    "@types/jest": "^29.5.12",
     "@types/node": "^20.12.12",
     "@types/pg": "^8.11.6",
     "@types/unzipper": "^0.10.9",
     "commander": "^12.1.0",
     "dotenv": "^16.4.5",
     "fast-csv": "^5.0.1",
+    "jest": "^29.7.0",
     "pg": "^8.11.5",
+    "ts-jest": "^29.1.4",
     "typescript": "^5.4.5",
     "unzipper": "^0.11.6"
   }
