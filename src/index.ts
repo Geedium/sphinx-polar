@@ -1,7 +1,3 @@
-/**
- * ENTRY FILE FOR TRANSFOMRATION
- */
-import fs from "fs";
 import csv from "fast-csv";
 import { dir } from "./utils/platform.js";
 import { Artist } from "./models/Artist.js";
@@ -13,12 +9,10 @@ const require = createRequire(import.meta.url);
 const { Client } = require('pg');
 
 import 'dotenv/config';
-import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { Upload } from '@aws-sdk/lib-storage';
-
+import { S3Client } from "@aws-sdk/client-s3";
 import { Command } from 'commander';
-import { Readable } from "stream";
-
+import { loadCSV } from "./utils/csv.js";
+import { downloadFromS3, uploadToS3 } from "./utils/s3.js";
 
 const S3_BUCKET_NAME = 'sphinx-polar';
 const S3_TRACKS_KEY = 'transformed_tracks.csv';
@@ -27,54 +21,6 @@ const S3_ARTISTS_KEY = 'transformed_artists.csv';
 const s3Client = new S3Client({
     region: process.env.AWS_REGION,
 });
-
-const loadCSV = (filePath: string): Promise<any[]> => {
-    return new Promise((resolve, reject) => {
-        const data: any[] = [];
-
-        fs.createReadStream(filePath)
-            .pipe(csv.parse({ headers: false }))
-            .on('error', error => reject(error))
-            .on('data', (row: any[]) => {
-                data.push(row);
-            })
-            .on('end', () => resolve(data));
-    });
-};
-
-async function uploadToS3(bucket: string, key: string, data: Readable): Promise<any> {
-    const command = new PutObjectCommand({ Bucket: bucket, Key: key, Body: data });
-
-    try {
-        const upload = new Upload({
-            client: s3Client,
-            params: command.input,
-        });
-
-        const result = await upload.done();
-
-        return result;
-    } catch (err) {
-        throw new Error(`Failed to upload file to S3: ${(err as Error).message}`);
-    }
-}
-
-async function downloadFromS3(bucket: string, key: string, downloadPath: string) {
-    const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-    const response = await s3Client.send(command);
-
-    // Check if the Body is a readable stream
-    if (!response.Body || !(response.Body instanceof Readable)) {
-        throw new Error('Response body is not a readable stream');
-    }
-
-    return new Promise<void>((resolve, reject) => {
-        const fileStream = fs.createWriteStream(downloadPath);
-        (response.Body as Readable).pipe(fileStream);
-        (response.Body as Readable).on('error', reject);
-        fileStream.on('close', resolve);
-    });
-}
 
 function parseStringArray(str: string) {
     try {
@@ -112,7 +58,7 @@ function parseStringArray(str: string) {
     }
 }
 
-async function transformData() {
+export async function transformData() {
     const artistTracksMap: Record<string, TransformedTrack[]> = {};
 
     console.log("Transforming tracks. This might take a while...");
@@ -214,8 +160,8 @@ async function transformData() {
     transformedArtistsStream.end();
 
     await Promise.all([
-        uploadToS3(S3_BUCKET_NAME, S3_TRACKS_KEY, transformedTracksStream),
-        uploadToS3(S3_BUCKET_NAME, S3_ARTISTS_KEY, transformedArtistsStream)
+        uploadToS3(s3Client, S3_BUCKET_NAME, S3_TRACKS_KEY, transformedTracksStream),
+        uploadToS3(s3Client, S3_BUCKET_NAME, S3_ARTISTS_KEY, transformedArtistsStream)
     ]);
 
     console.log("Done, data transformation succeeded, check AWS S3!");
@@ -224,8 +170,8 @@ async function transformData() {
 async function fetchFromS3() {
     try {
         console.log("Pulling data from S3. This might take a while...");
-        await downloadFromS3(S3_BUCKET_NAME, S3_TRACKS_KEY, path.resolve(dir, "..", "artifacts", "tracks.csv"));
-        await downloadFromS3(S3_BUCKET_NAME, S3_ARTISTS_KEY, path.resolve(dir, "..", "artifacts", "artists.csv"));
+        await downloadFromS3(s3Client, S3_BUCKET_NAME, S3_TRACKS_KEY, path.resolve(dir, "..", "artifacts", "tracks.csv"));
+        await downloadFromS3(s3Client, S3_BUCKET_NAME, S3_ARTISTS_KEY, path.resolve(dir, "..", "artifacts", "artists.csv"));
     } catch (err) {
         console.error('Error processing data:', err);
     }
@@ -247,6 +193,9 @@ async function eraseTables() {
         console.log("Dropping tables if any exists...")
         await client.query("DROP TABLE IF EXISTS tracks");
         await client.query("DROP TABLE IF EXISTS artists");
+        await client.query("DROP TABLE IF EXISTS most_energizing_tracks");
+        await client.query("DROP TABLE IF EXISTS track_info");
+        await client.query("DROP TABLE IF EXISTS tracks_with_artist_followers");
         console.log("Successfully dropped tables.");
     } catch (err) {
         console.error('Error processing data:', err);
